@@ -1,6 +1,8 @@
-import numpy as np  # v 1.24.3
-import pandas as pd  # v 2.0.1
+import numpy as np  # v 1.25.0
+import pandas as pd  # v 2.2.2
 import re
+import imageio  # v 2.31.1
+import cv2 as cv  # opencv-python v 4.9.0.80
 
 import Generate_files
 
@@ -77,6 +79,64 @@ def read_grayscale(movie_path):
 
     return gray_arr, amount_of_frames
 
+
+def read_tif_file(movie_path):
+    """
+        IDEA:   > read in .tif file of movie (MOVIENAME) (using imageio)
+                > transform movie to grayscale (using cv)
+                > store grayscale numpy array (type np.unit8) as MOVIENAME_gray.npy
+        :param movie_path: Pathlib movie_path to .tif movie file
+        :return: 0
+        """
+
+    # movie information:
+    if movie_path.name[-4:] == '.tif':  # to read in as .tif file
+        reader = imageio.v2.get_reader(movie_path)
+        amount_of_frames = len(reader)
+    else:  # if movie has another file format, still try to read it in
+        reader = imageio.get_reader(movie_path, format='ffmpeg')
+        movie_meta_data = reader.get_meta_data()
+        amount_of_frames = int(movie_meta_data['fps'] * movie_meta_data['duration'])
+
+    if len(list(reader.get_data(0).shape)) == 3:
+        frame_dimension = list(reader.get_data(0).shape)  # gets shape of first image in video
+        amount_of_frames = frame_dimension[0]
+        gray_frame_dimensions = frame_dimension[1:3]
+    else:
+        frame_dimension = list(reader.get_data(0).shape)
+        gray_frame_dimensions = frame_dimension
+
+    # create numpy array to be filled with movie
+    gray_frame_dimensions.append(amount_of_frames)
+    gray_arr = np.zeros(gray_frame_dimensions, dtype=np.uint8)
+
+    for i, color_frame in enumerate(reader):
+        for frame_index in range(amount_of_frames):
+            if len(color_frame.shape) > 3:
+                gray_frame = cv.cvtColor(color_frame[frame_index, :, :], cv.COLOR_BGR2GRAY)
+                gray_arr[:, :, frame_index] = gray_frame
+            elif len(color_frame.shape) == 2:
+                gray_arr[:, :, i] = color_frame
+            else:
+                gray_arr[:, :, frame_index] = color_frame[frame_index, :, :]
+
+    reader.close()
+
+    mat = re.match(r'(\S+)_([\a-zA-Z]+)\.tif', movie_path.name)
+    # read file about removing frames from movies
+    file_path = movie_path.parent.parent.parent / 'FrameRemoval.xlsx'
+    if mat.groups()[1] == 'DeepCad' or mat.groups()[1] == 'Raw':
+        file_path = movie_path.parent.parent.parent.parent / 'FrameRemoval.xlsx'
+    data = pd.read_excel(file_path, header=None)
+    data = np.array(data)
+    removal = np.where(data[:, 0] == (mat.groups()[0]+'.tif'))[0]  # this is the line corresponding to current movie, if applicable
+    if len(removal) != 0:
+        removal = data[removal, :][0][1]
+        removal = [int(s) for s in removal.split(',')]
+        gray_arr = np.delete(gray_arr, removal, axis=2)
+
+    return gray_arr
+    
 
 def read_binary(movie_path):
     """
