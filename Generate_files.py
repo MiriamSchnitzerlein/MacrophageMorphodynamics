@@ -1,13 +1,15 @@
-import numpy as np  # v 1.24.3
-import pandas as pd  # v 2.0.1
+import numpy as np  # v 1.25.0
+import pandas as pd  # v 2.2.2
 
-import matplotlib.pyplot as plt  # matplotlib v 3.7.1
+import matplotlib.pyplot as plt  # matplotlib v 3.8.4
 from matplotlib.colors import ListedColormap
 
 # for image analysis/ manipulation
-import imageio  # v 2.29.0
-import cv2 as cv  # in generate_grayscale  # opencv-python v 4.7.0.72
-import skimage  # scikit-image v 0.20.0
+import imageio  # v 2.31.1
+import cv2 as cv  # in generate_grayscale  # opencv-python v 4.9.0.80
+import skimage  # scikit-image v 0.22.0
+
+import scipy  # v 1.12.0
 
 from pathlib import Path  # v 1.0.1
 import shutil
@@ -68,33 +70,61 @@ def store_scaling(movie_path):
         return 0
 
     length_scale, time_points = np.nan, np.nan
+    file_type = 0
     with open(file_name) as info_file:
-        for item in info_file:
-            # matching amount of data points
-            mat = re.match(r' SizeT = (\d+)', item)
-            if mat:
-                vid_length = int(mat.groups()[0])
-                time_points = np.zeros(vid_length, dtype='datetime64[ms]')
+        my_string = info_file.read(8)
+        if my_string == ' BitsPer':
+            file_type = 1
+            for item in info_file:
+                # matching amount of data points
+                mat = re.match(r' SizeT = (\d+)', item)
+                if mat:
+                    vid_length = int(mat.groups()[0])
+                    time_points = np.zeros(vid_length, dtype='datetime64[ms]')
 
-            # matching string starting with 'TimePoint'
-            mat = re.match(r'TimePoint(\d+) = (\d+-\d+-\d+) (\d+:\d+:\d+.\d+)', item)
-            if mat:
-                tp_num = int(mat.groups()[0])
-                time_str = np.datetime64(mat.groups()[1] + 'T' + mat.groups()[2])
+                # matching string starting with 'TimePoint'
+                mat = re.match(r'TimePoint(\d+) = (\d+-\d+-\d+) (\d+:\d+:\d+.\d+)', item)
+                if mat:
+                    tp_num = int(mat.groups()[0])
+                    time_str = np.datetime64(mat.groups()[1] + 'T' + mat.groups()[2])
 
-                time_points[tp_num - 1] = time_str
+                    time_points[tp_num - 1] = time_str
 
-            # matching length scaling
-            mat = re.match(r'Resolution:\s+(\d+.\d+) pixels per micron', item)
-            if mat:
-                length_scale = (float(mat.groups()[0]))
+                # matching length scaling
+                mat1 = re.match(r'Resolution:\s+(\d+.\d+) pixels per micron', item)
+                mat2 = re.match(r'Resolution:\s+(\d+) pixels per micron', item)
+                if mat1:
+                    length_scale = (float(mat1.groups()[0]))
+                elif mat2:
+                    length_scale = (float(mat2.groups()[0]))
+        elif my_string == '(Fiji Is':
+            file_type = 2
+            for item in info_file:
+                # matching length scaling
+                mat1 = re.match(r'Resolution:\s+(\d+.\d+) pixels per micron', item)
+                mat2 = re.match(r'Resolution:\s+(\d+) pixels per micron', item)
+                if mat1:
+                    length_scale = (float(mat1.groups()[0]))
+                elif mat2:
+                    length_scale = (float(mat2.groups()[0]))
+
+                mat = re.match(r'Frame interval:\s+(\d+.\d+) sec', item)
+                if mat:
+                    frame_int = float(mat.groups()[0])
+
+                mat = re.match(r'\s*Frame:\s+\d+/(\d+)(.|\n)+', item)
+                if mat:
+                    amount_of_frames = int(mat.groups()[0])
+
     if np.isnan(length_scale):
-        raise ValueError('Resolution was not found in file InfoFor_', movie_path.name)
-    time_points = np.round((time_points - time_points[0]).astype(float) / 1000)
+        raise ValueError('Resolution was not found in file InfoFor_', path.name)
+    if file_type == 1:
+        time_points = np.round((time_points - time_points[0]).astype(float) / 1000)
+    elif file_type == 2:
+        time_points = np.linspace(0, frame_int * amount_of_frames, num=amount_of_frames)
     time_points = np.append(length_scale, time_points)
 
     np.save(save_path, time_points)
-
     return 0
 
 
@@ -169,7 +199,7 @@ def remove_frames_restore_data(path):
     data = pd.read_excel(file_path, header=None)
     data = np.array(data)
     removal = np.where(data[:, 0] == path.name)[0]  # this is the line corresponding to current movie, if applicable
-    if not removal:
+    if len(removal) == 0:
         print('No frames found to be removed for movie ', path.name)
         return 0
     removal = data[removal, :][0][1]
@@ -366,7 +396,7 @@ def store_label_array(movie_path):
                                                                  mask=dilated_binary)
         # having CLEANED binary image with cutoff protrusions labelled correctly
         bin_arr_clea = generate_binary_preprocessed(bin_arr, len_scaling)
-        if movie_path.name == 'Ctrl.tif':
+        if movie_path.name == 'Ctrl.tif':  # not necessary for version 2 of the data
             bin_arr_clea = generate_binary_preprocessed(bin_arr, len_scaling, opening_r=1.2)
         tempor_labelled_arr_final = bin_arr_clea[:, :, frame] * tempor_labelled_arr_dil
 
@@ -431,6 +461,8 @@ def store_cell_properties(movie_path):
             3) use skimage.morphology.region_props to extract -> area, perimeter, cell shape parameters
                 cell size parameters: area (in µm and pxl), perimeter [µm], fixed area [µm^2], intensity area [pxl^2]
                 cell shape parameters:  solidity, convexity, eccentricity, major_axis, minor_axis
+                                        protrusiveness, angularity, length of longest protrusion
+                dynamic cell area change: change in area between frames, time points of consecutive frames
             4) store everything
     :param movie_path: pathlib movie_path to the .tif movie which is to be analysed here
     :return: 0, stores results as data arrays (.npy)
@@ -464,29 +496,35 @@ def store_cell_properties(movie_path):
     for cell in range(0, amount_of_cells):
         fixed_area[cell] = mean_arr_regpro[cell].area
 
+    #########
+    # PARAMETERS FOR SHOLL ANALYSIS
+    min_rad = 8 * len_scaling  # minimum radius in micron, transformed to pxl via length scaling
+    max_rad = 56 * len_scaling  # maximum radius in micron
+    increm = 8 * len_scaling  # increments of circle radii
+    # PARAMETER FOR EROSION-DILATION
+    radius = 2 * len_scaling  # in micron  # radius of disk for erosion-dilation
+    my_shape = skimage.morphology.disk(radius)
+
     ####################
     # GENERATE CELL PROPERTIES FROM LABELLED MOVIES
     ####################
     # INITIALIZING ARRAYS
     # initialize arrays for cell properties (size and shape)
-    # area, fixed_area, perimeter, area_pxl, area_intensity
-    cell_size_properties = np.zeros((amount_of_cells, amount_of_frames, 5))
+    # area, fixed_area, perimeter
+    cell_size_properties = np.zeros((amount_of_cells, amount_of_frames, 3))
     # storing the fixed area (at all time points, in case I need to remove frame 0 at some point)
     cell_size_properties[:, :, 1] = np.full((amount_of_cells, amount_of_frames), fixed_area[:, None])
 
-    # solidity, convexity, eccentricity, major_axis, minor_axis, circularity (=form factor)
-    cell_shape_properties = np.zeros((amount_of_cells, amount_of_frames, 6))
+    # solidity, convexity, eccentricity, major_axis, minor_axis, circularity (=form factor), protrusiveness, angularity,
+    # length of longest protrusion
+    cell_shape_properties = np.zeros((amount_of_cells, amount_of_frames, 9))
 
     for frame in range(0, amount_of_frames):
         if frame % 50 == 0:
             print('\tframe ', frame)
 
-        # STORING AREA/ PERIMETER of labelled images (w/ and w/o skeleton)
         lab_arr = label_arr[:, :, frame]
-        gray_arr_singleframe = gray_arr[:, :, frame]
-        mean_intensity = np.mean(gray_arr_singleframe)
-
-        region_props = skimage.measure.regionprops(lab_arr[:, :])
+        region_props = skimage.measure.regionprops(lab_arr)
 
         for cell in range(0, amount_of_cells):
             # if at some point, not all cells are detected:
@@ -497,26 +535,89 @@ def store_cell_properties(movie_path):
                     print('Error 404: cell ', cell + 1, ' not found in frame', frame)
                     continue
 
-                cell_size_properties[cell, frame, 0] = cell_size_properties[cell, frame, 3] = region_props[cell].area
+                # CELL SIZE PROPERTIES
+                cell_size_properties[cell, frame, 0] = region_props[cell].area
                 cell_size_properties[cell, frame, 2] = region_props[cell].perimeter
 
+                # CELL SHAPE PROPERTIES
                 cell_shape_properties[cell, frame, 0] = region_props[cell].solidity
                 cell_shape_properties[cell, frame, 2] = region_props[cell].eccentricity
                 cell_shape_properties[cell, frame, 3] = region_props[cell].axis_major_length
                 cell_shape_properties[cell, frame, 4] = region_props[cell].axis_minor_length
 
-                # measure convex hull for convexity
+                # measure convex hull for CONVEXITY
                 chull = skimage.morphology.convex_hull_image(arr)
                 convex_peri = skimage.measure.regionprops(skimage.measure.label(chull))[0].perimeter
                 cell_shape_properties[cell, frame, 1] = convex_peri / cell_size_properties[cell, frame, 2]
 
-                # intensity area
-                cell_inds = np.where(arr)  # because 0 is the background, so everything else is the cell
-                cell_size_properties[cell, frame, 4] = np.sum(gray_arr_singleframe[cell_inds]) - \
-                                                       (cell_size_properties[cell, frame, 0] * mean_intensity)
+                # PROTRUSIVENESS
+                circle_origin = np.round(mean_arr_regpro[cell].centroid).astype(int)  # center of mass of fixed area (for circle origin)
+                # for each circle radius (increasing):
+                sholl_intercept_counter = 0
+                cell_arr = np.copy(arr)
+                for circle_radius in np.arange(min_rad, max_rad, increm, dtype=int):
+                    sholl_circle_arr = np.zeros_like(arr, dtype=np.uint8)
+                    rr, cc = skimage.draw.circle_perimeter(circle_origin[0], circle_origin[1], circle_radius,
+                                                           shape=sholl_circle_arr.shape)
+                    sholl_circle_arr[rr, cc] = 1
+                    circle = skimage.segmentation.find_boundaries(skimage.morphology.disk(circle_radius), mode='inner')
+                    sholl_intercept_im = sholl_circle_arr * cell_arr
+                    if np.sum(sholl_intercept_im) != np.sum(circle):  # else the whole circle is covered which is not interesting for us
+                        amount_of_intercepts = np.max(skimage.morphology.label(sholl_intercept_im, connectivity=2))
+                        sholl_intercept_counter += amount_of_intercepts
+                cell_shape_properties[cell, frame, 6] = sholl_intercept_counter
+
+                # ANGULARITY
+                eroded_dilated_cell = skimage.morphology.binary_erosion(cell_arr, footprint=my_shape)
+                eroded_dilated_cell = skimage.morphology.binary_dilation(eroded_dilated_cell, footprint=my_shape)
+                # region_props = skimage.measure.regionprops(eroded_dilated_cell)
+                erod_dil_cell_area = np.sum(eroded_dilated_cell != 0)
+                cell_shape_properties[cell, frame, 7] = erod_dil_cell_area
+
+                # LENGTH OF LONGEST PROTRUSION
+                fixed_contour = np.where(
+                    skimage.segmentation.find_boundaries(mean_arr_labels == cell + 1, mode='inner'))
+                cell_contour = np.where(
+                    skimage.segmentation.find_boundaries(arr, mode='inner'))
+                dist = scipy.spatial.distance.cdist(np.stack([cell_contour[0], cell_contour[1]], axis=1),
+                                                    np.stack([fixed_contour[0], fixed_contour[1]], axis=1))
+                distances = np.min(dist, axis=1)
+                cell_shape_properties[cell, frame, 8] = np.max(distances)
+
+    # dynamic area change
+    # find right 'time intervals' for integrating area
+    wanted_time_interval = 14  # we want 14 seconds between 2 consecutive frames
+
+    time_steps, time_steps_indices = np.ones_like(time_scaling) * (-1), np.ones_like(time_scaling) * (-1)
+    time_steps[0], time_steps_indices[0] = 0, 0
+
+    # initialise time steps, with step length defined by wanted_time_interval
+    for time_point_ind in range(len(time_steps - 1)):
+        next_time_point = time_steps[time_point_ind] + wanted_time_interval
+        if next_time_point <= time_scaling[-1]:
+            next_time_point_ind = np.argmin(np.abs(time_scaling - next_time_point))
+            next_time_point_rounded = time_scaling[next_time_point_ind]
+            if next_time_point_rounded not in time_steps:
+                time_steps_indices[time_point_ind + 1] = next_time_point_ind
+                time_steps[time_point_ind + 1] = next_time_point_rounded
+        else:
+            break
+
+    time_steps, time_steps_indices = time_steps[time_steps > -1], time_steps_indices[time_steps_indices > -1]
+    dynamic_area_change = np.zeros((amount_of_cells + 1, len(time_steps_indices)-1))
+    dynamic_area_change[-1, :] = time_steps[:-1]
+
+    for cell in range(0, amount_of_cells):
+        for frame_ind in range(len(time_steps_indices[:-1])):
+
+            lab_arr = label_arr[:, :, time_steps_indices[frame_ind]]
+            arr = (lab_arr == cell + 1)  # array where only current cell 'exists'
+            arr_next = (label_arr[:, :, time_steps_indices[frame_ind+1]] == cell+1)
+            cell_area_difference = np.sum(arr ^ arr_next)
+            dynamic_area_change[cell, frame_ind] = cell_area_difference
 
     ##############################
-    # STORE MAIN RESULTS/ KEY DATA
+    # SCALE AND STORE MAIN RESULTS/ KEY DATA
     ##############################
     # Scaling from pxl to µm with [len_scaling] = pxl/µm
     cell_size_properties[:, :, 0] /= (len_scaling ** 2)  # scaling the area
@@ -525,9 +626,12 @@ def store_cell_properties(movie_path):
 
     cell_shape_properties[:, :, 3] /= len_scaling  # scaling the major axis
     cell_shape_properties[:, :, 4] /= len_scaling  # scaling the minor axis
-    cell_shape_properties[:, :, 5] = (4 * np.pi * cell_size_properties[:, :, 0]) / (cell_size_properties[:, :, 2] ** 2)
+    cell_shape_properties[:, :, 5] = (4 * np.pi * cell_size_properties[:, :, 0]) / (cell_size_properties[:, :, 2] ** 2)  # circularity
+    cell_shape_properties[:, :, 7] /= (len_scaling ** 2)  # scaling the erosion-dilation-area = angularity
+    cell_shape_properties[:, :, 7] = (cell_size_properties[:, :, 0] - cell_shape_properties[:, :, 7]) / cell_size_properties[:, :, 0]
+    cell_shape_properties[:, :, 8] /= len_scaling  # scaling the length of the longest protrusion
 
-    cell_size_properties[:, :, 4] /= 255  # intensity area: go from scale (0-255) to (0-1)
+    dynamic_area_change[:-1, :] /= (len_scaling ** 2)  # scaling the dynamic area change
 
     # storing the data arrays
     data_path = movie_path.parent.parent / 'NpyData'
@@ -535,6 +639,8 @@ def store_cell_properties(movie_path):
             cell_size_properties)
     np.save((data_path / re.sub(movie_path.name[-4:], '_CellShapeProperties.npy', movie_path.name)),
             cell_shape_properties)
+    np.save((data_path / re.sub(movie_path.name[-4:], '_DynamicAreaChange.npy', movie_path.name)),
+            dynamic_area_change)
 
     return 0
 
