@@ -49,6 +49,8 @@ if __name__ == '__main__':
     GeneratePlotsForPaper.Fig3_4_DimensReduction(MOVIE_PATH, 'in_vivo', 'PCA', ['MCSF', 'YM201636'])
     GeneratePlotsForPaper.Fig3_4_DimensReduction(MOVIE_PATH, 'Explant', 'PCA', ['Ctrl', 'ExplantDirect', 'ExplantRest'], plot_acc_to_movie=True)
 
+    GeneratePlotsForPaper.perform_Rosenbaum_tests(MOVIE_PATH)
+
     GeneratePlotsForPaper.Fig5_LabellingSnapshots(MOVIE_PATH)
 
     # SUPPLEMENTARY DATA (plots or movies)
