@@ -56,6 +56,7 @@ if __name__ == '__main__':
     GeneratePlotsForPaper.Fig3_4_DimensReduction(MOVIE_PATH, 'Old', 'PCA', old_conds, plot_acc_to_movie=True, v=2)
     GeneratePlotsForPaper.Fig3_4_DimensReduction(MOVIE_PATH, 'Explant', 'PCA', explant_conds, plot_acc_to_movie=True,
                                                  use_features='all', v=2)
+    GeneratePlotsForPaper.perform_Rosenbaum_tests(MOVIE_PATH)
 
     GeneratePlotsForPaper.Fig5_LabellingSnapshots(MOVIE_PATH, v=2)
 
