@@ -23,6 +23,9 @@ from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
 from sklearn.neighbors import NeighborhoodComponentsAnalysis
 import umap  # umap-learn v 0.5.6
 
+from Rosenbaum_networkx import *
+from scipy.stats import gaussian_kde
+
 import Read_files, Generate_files
 
 
@@ -789,8 +792,8 @@ def Fig3_4_CellSnapshots_V2(movie_path, condition):
     parent_path = movie_path.parent.parent.parent  # go to 'outermost' directory ('RTM_Data')
     available_conditions = ['Ctrl', 'LPS', 'MCSF', 'YM201636', 'Old', 'OldMCSF', 'TGFbeta', 'IFN10', 'Explant 1',
                             'Explant 2']
-    outline_color = ['lightskyblue', 'sandybrown', 'darkseagreen', 'm', 'darkgoldenrod', 'gold', 'darkgreen',
-                     'saddlebrown', 'lightseagreen', 'teal']
+    outline_color = ['lightskyblue', 'sandybrown', 'darkgreen', 'm', 'darkgoldenrod', 'gold', 'yellowgreen',
+                     'saddlebrown', 'teal', 'turquoise']
 
     # 'Ctrl_2021-05-20_2.tif'
     movie_name = ['Ctrl_2024-07-04.tif', 'LPS_2024-07-04_30min.tif', 'MCSF_2024-09-12_4A.tif',
@@ -1039,7 +1042,7 @@ def Fig3_4_CellSize_boxplot(movie_path, summary_stat='mean', imaging_condition='
             label_rot = 20
         elif v == 2:
             conditions = ['Ctrl', 'MCSF', 'TGFbeta', 'LPS', 'IFN10', 'YM201636']
-            colors = ['lightskyblue', 'darkseagreen', 'darkgreen', 'sandybrown', 'saddlebrown', 'm']
+            colors = ['lightskyblue', 'darkgreen', 'yellowgreen', 'sandybrown', 'saddlebrown', 'm']
             x_labels = ['Ctrl', 'M-CSF', r'TGF-$\beta$', 'LPS', r'IFN-$\gamma$', 'YM']
             colmap = mcol.LinearSegmentedColormap.from_list('my_map', colors, N=len(colors))
             label_rot = 40
@@ -1058,18 +1061,16 @@ def Fig3_4_CellSize_boxplot(movie_path, summary_stat='mean', imaging_condition='
             label_rot = 20
         elif v == 2:
             conditions = ['Ctrl', 'Explant 1', 'Explant 2']
-            colors = ['lightskyblue', 'lightseagreen', 'teal']
+            colors = ['lightskyblue', 'teal', 'turquoise']
             colmap = mcol.LinearSegmentedColormap.from_list('my_map', colors, N=len(colors))
             x_labels = ['$\it{in}$ $\it{vivo}$', 'Expl 1', 'Expl 2']
             label_rot = 20
     else:
         print('The only accepted input for "imaging_condition" are "in_vivo" or "Explant", but not ', imaging_condition)
-        imaging_condition = 'in_vivo'
-        conditions = ['Ctrl', 'LPS', 'MCSF', 'EDTA', 'YM201636', 'Old', 'OldMCSF', 'TGFbeta', 'IFN10']
-        colors = ['lightskyblue', 'sandybrown', 'darkseagreen', 'gold', 'silver', 'darkgrey', 'plum', 'darkgreen',
-                  'saddlebrown']
-        colmap = mcol.LinearSegmentedColormap.from_list('my_map', colors, N=len(colors))
-        x_labels = ['Ctrl', 'LPS', 'M-CSF', 'EDTA', 'YM', 'Old', 'Old+M-CSF', r'TGF$\beta$', 'IFN10']
+        conditions = ['Ctrl', 'MCSF', 'TGFbeta', 'LPS', 'IFN10', 'YM201636']
+            colors = ['lightskyblue', 'darkgreen', 'yellowgreen', 'sandybrown', 'saddlebrown', 'm']
+            x_labels = ['Ctrl', 'M-CSF', r'TGF-$\beta$', 'LPS', r'IFN-$\gamma$', 'YM']
+            colmap = mcol.LinearSegmentedColormap.from_list('my_map', colors, N=len(colors))
         print('Here, "in_vivo" is now used.')
 
     if summary_stat not in ['mean', 'std', 'trend', 'dyn']:
@@ -1423,7 +1424,7 @@ def Fig3_4_CellShape_boxplot(movie_path, summary_stat='mean', imaging_condition=
             x_labels = ['Ctrl', 'LPS', 'M-CSF', 'Iso', 'YM']
         elif v == 2:
             conditions = ['Ctrl', 'MCSF', 'TGFbeta', 'LPS', 'IFN10', 'YM201636']
-            colors = ['lightskyblue', 'darkseagreen', 'darkgreen', 'sandybrown', 'saddlebrown', 'm']
+            colors = ['lightskyblue', 'darkgreen', 'yellowgreen', 'sandybrown', 'saddlebrown', 'm']
             x_labels = ['Ctrl', 'M-CSF', r'TGF-$\beta$', 'LPS', r'IFN-$\gamma$', 'YM']
             colmap = mcol.LinearSegmentedColormap.from_list('my_map', colors, N=len(colors))
             label_rot = 40
@@ -1441,7 +1442,7 @@ def Fig3_4_CellShape_boxplot(movie_path, summary_stat='mean', imaging_condition=
             x_labels = ['$\it{in}$ $\it{vivo}$', 'Expl direct', 'Expl rest']
         elif v == 2:
             conditions = ['Ctrl', 'Explant 1', 'Explant 2']
-            colors = ['lightskyblue', 'lightseagreen', 'teal']
+            colors = ['lightskyblue', 'teal', 'turquoise']
             colmap = mcol.LinearSegmentedColormap.from_list('my_map', colors, N=len(colors))
             x_labels = ['$\it{in}$ $\it{vivo}$', 'Expl 1', 'Expl 2']
             label_rot = 20
@@ -2450,7 +2451,7 @@ def Fig3_4_DimensReduction(movie_path, imaging_condition='in_vivo', method='PCA'
     IDEA: read in feature data of all cells for the given condition(s), perform a dimensionality reduction of the given
     features (see method), and then plot 'cells' in the reduced space (2D or 3D), colored according to their condition
     :param movie_path: pathlib Path to .tif file of an arbitrary movie (the correct movie files are chosen in the fct)
-    :param imaging_condition: string 'in_vivo' or 'Explant'
+    :param imaging_condition: string 'in_vivo', 'Old' or 'Explant'
     :param method: string, which dimensionality reduction to use. Available parameters are 'PCA', 'KernelPCA', 'TSNE',
                     'Isomap', 'LLE', 'SpecEmb', 'MDS', 'LDA', 'T-SVD', 'FA', 'ICA', 'NMF', 'LaDA', 'NCA', 'UMAP'
     :param use_condition: list of strings, which conditions to use in the dimensionality reduction.
@@ -2538,6 +2539,7 @@ def Fig3_4_DimensReduction(movie_path, imaging_condition='in_vivo', method='PCA'
     # if len(use_condition) > 4:
     #     use_alpha = np.linspace(1, 0.5, len(use_condition))
     # use_alpha = np.linspace(1, 0.65, len(use_condition))
+    use_alpha = np.linspace(1, 0.2, len(use_condition))
 
     for i, condi in enumerate(use_condition):
         # get correct color and legend name
@@ -2583,6 +2585,13 @@ def Fig3_4_DimensReduction(movie_path, imaging_condition='in_vivo', method='PCA'
                 plt.rcParams["font.family"] = "Arial"
                 fig = plt.figure(figsize=figsize)
                 ax = fig.add_subplot()
+                fig2 = plt.figure(figsize=figsize)
+                ax2 = fig2.add_subplot()
+                
+                nbins = 300
+                all_x = fit_res[:, 0]
+                all_y = fit_res[:, 1]
+                xi, yi = np.mgrid[(all_x.min()-0.5):(all_x.max()+0.5):nbins * 1j, (all_y.min()-0.5):(all_y.max()+0.5):nbins * 1j]
 
                 condi_string = ''
                 use_colors, use_legends = [], []
@@ -2592,50 +2601,94 @@ def Fig3_4_DimensReduction(movie_path, imaging_condition='in_vivo', method='PCA'
                     use_colors.append(colors[cond_index])
                     use_legends.append(conditions_legend[cond_index])
                     condi_string += condi
-                ax.set_xlabel(ax_name + str(1), fontsize=label_fontsize)
-                ax.set_ylabel(ax_name + str(2), fontsize=label_fontsize, labelpad=1.3)
-                ax.tick_params(axis='y', size=2, width=1, labelsize=label_fontsize, pad=1)
-                ax.tick_params(axis='x', size=2, width=1, labelsize=label_fontsize, pad=1)
+                
+                for axis in [ax, ax2]:
+                    axis.set_xlabel(ax_name + str(1), fontsize=label_fontsize)
+                    axis.set_ylabel(ax_name + str(2), fontsize=label_fontsize, labelpad=1.3)
+                    axis.tick_params(axis='y', size=2, width=1, labelsize=label_fontsize, pad=1)
+                    axis.tick_params(axis='x', size=2, width=1, labelsize=label_fontsize, pad=1)
 
                 for target, color, label, alpha in zip(use_condition, use_colors, use_legends, use_alpha):
                     indicesToKeep = np.array((rtm_df['Label'] == target))
                     ax.scatter(fit_res[indicesToKeep, 0], fit_res[indicesToKeep, 1], c=color, s=15, label=label,
-                               alpha=alpha)
+                               alpha=0.75, edgecolors='none)
+
+                    custom_cmap = LinearSegmentedColormap.from_list('map_name', ['white', color])
+                    x = fit_res[indicesToKeep, 0]
+                    y = fit_res[indicesToKeep, 1]
+                    k = gaussian_kde([x, y])
+                    zi = k(np.vstack([xi.flatten(), yi.flatten()])).reshape(xi.shape)
+                    cset1 = ax2.contourf(xi, yi, zi / np.nanmax(zi), [.25, .5, .75], alpha=alpha, cmap=custom_cmap,
+                                         extend='max')
+                    ax2.contour(xi, yi, zi / np.nanmax(zi), cset1.levels, colors=color, linewidths=0.3, alpha=0.3)
+
 
                 if use_legend:
                     ax.legend(fontsize=label_fontsize, handletextpad=0.15, markerscale=0.75, labelspacing=0.25)
                 fig.tight_layout(pad=0.0)
+                fig2.tight_layout(pad=0.0)
+                # adapt axes limits of contour plots
+                ax2.set_xlim(ax.get_xlim())
+                ax2.set_ylim(ax.get_ylim())
                 fig_path = Path().absolute() / 'Fig3-4_DimensionReduction'
                 Path(fig_path).mkdir(parents=True, exist_ok=True)
                 fig_name = method + '_' + condi_string + '_' + str(
                     ndim) + 'D_' + use_features + 'feat' + 'samePCA' + '.png'
+                fig_name_2 = method + '_' + condi_string + '_' + str(
+                    ndim) + 'D_' + use_features + 'feat' + 'samePCA_density' + '.png'
                 if identical_cells:
                     fig_name = fig_name[:-4] + '_direct.png'
                 fig.savefig(fig_path / fig_name, dpi=500, bbox_inches='tight')
+                fig2.savefig(fig_path / fig_name_2, dpi=700, bbox_inches='tight')
                 # plt.close('all')
 
         else:
             ax = fig.add_subplot()
-            ax.set_xlabel(ax_name + str(1), fontsize=label_fontsize)
-            ax.set_ylabel(ax_name + str(2), fontsize=label_fontsize, labelpad=1.3)
-            ax.tick_params(axis='y', size=2, width=1, labelsize=label_fontsize, pad=1)
-            ax.tick_params(axis='x', size=2, width=1, labelsize=label_fontsize, pad=1)
+            ax2 = fig2.add_subplot()
+            use_alpha = np.linspace(1, 0.5, len(use_condition))
+
+            for axis in [ax, ax2]:
+                axis.set_xlabel(ax_name + str(1), fontsize=label_fontsize)
+                axis.set_ylabel(ax_name + str(2), fontsize=label_fontsize, labelpad=1.3)
+                axis.tick_params(axis='y', size=2, width=1, labelsize=label_fontsize, pad=1)
+                axis.tick_params(axis='x', size=2, width=1, labelsize=label_fontsize, pad=1)
+            nbins = 300
+            all_x = fit_res[:, 0]
+            all_y = fit_res[:, 1]
+            xi, yi = np.mgrid[all_x.min():all_x.max():nbins * 1j, all_y.min():all_y.max():nbins * 1j]
 
             for target, color, label, alpha in zip(use_condition, use_colors, use_legends, use_alpha):
                 indicesToKeep = np.array((rtm_df['Label'] == target))
                 ax.scatter(fit_res[indicesToKeep, 0], fit_res[indicesToKeep, 1], c=color, s=15, label=label,
-                           alpha=alpha)
+                           alpha=0.75, edgecolors='none)
+                custom_cmap = LinearSegmentedColormap.from_list('map_name', ['white', color])
+                x = fit_res[indicesToKeep, 0]
+                y = fit_res[indicesToKeep, 1]
+                k = gaussian_kde([x, y])
+                zi = k(np.vstack([xi.flatten(), yi.flatten()])).reshape(xi.shape)
+                cset1 = ax2.contourf(xi, yi, zi / np.nanmax(zi), [.25, .5, .75], alpha=alpha, cmap=custom_cmap,
+                                     extend='max')
+                ax2.contour(xi, yi, zi / np.nanmax(zi), cset1.levels, colors=color, linewidths=0.3, alpha=0.3)
+
 
             if use_legend:
                 ax.legend(fontsize=label_fontsize, handletextpad=0.15, markerscale=0.75, labelspacing=0.25)
             fig.tight_layout(pad=0.0)
+            fig2.tight_layout(pad=0.0)
+            # adapt axes limits of contour plots
+            ax2.set_xlim(ax.get_xlim())
+            ax2.set_ylim(ax.get_ylim())
             fig_path = Path().absolute() / 'Fig3-4_DimensionReduction'
             Path(fig_path).mkdir(parents=True, exist_ok=True)
             fig_name = method + '_' + condi_string + '_' + str(ndim) + 'D_' + use_features + '.png'
+            fig_name_2 = method + '_' + condi_string + '_' + str(ndim) + 'D_' + use_features + '_DENSITY.png'
+
             if identical_cells:
                 fig_name = fig_name[:-4] + '_direct.png'
             fig.savefig(fig_path / fig_name, dpi=500, bbox_inches='tight')
+            fig2.savefig(fig_path / fig_name_2, dpi=500, bbox_inches='tight')
             plt.close('all')
+
 
     # FOR SCATTERING ACCORDING TO MOVIE NAMES
     if plot_acc_to_movie:
@@ -2681,6 +2734,41 @@ def Fig3_4_DimensReduction(movie_path, imaging_condition='in_vivo', method='PCA'
         fig.savefig(fig_path / fig_name, dpi=500, bbox_inches='tight')
 
     plt.close('all')
+
+    return 0
+
+
+def perform_Rosenbaum_tests(movie_path):
+    # idea: read in all features for all conditions
+    # make matrix with populations tested against each other
+
+    parent_path = movie_path.parent.parent.parent  # go to 'outermost' directory ('MacrophageData')
+    all_conditions = ['Ctrl', 'MCSF', 'TGFbeta', 'LPS', 'IFN10', 'YM201636', 'Old', 'OldMCSF',
+                            'Explant 1', 'Explant 2']
+    feature_data, features = AuxiliaryFct_read_features_V2(parent_path, all_conditions)
+    data = feature_data.drop(columns=["Movie name", "Cell Nr"])
+
+    # standardisation: subtract mean, divide by std -> values distributed with mean=0 and std=1
+    data_scaled = data.copy()
+    for column in data_scaled.columns:
+        if column == 'Label':
+            continue
+        data_scaled[column] = (data_scaled[column] - data_scaled[column].mean()) / data_scaled[column].std()
+
+    all_p_values_scaled = np.full((len(all_conditions), len(all_conditions)), np.nan, dtype=float)
+
+    for ctrl_index, ctrl_cond in enumerate(all_conditions):
+        print(ctrl_cond)
+        for index, cond in enumerate(all_conditions[:ctrl_index]):
+            if ctrl_cond == cond:
+                continue
+            p_val, zscore, rel_supp = rosenbaum(data_scaled, group_by='Label', test_group=cond, reference=ctrl_cond, metric='seuclidean', rank=False)
+            all_p_values_scaled[ctrl_index, index] = p_val
+
+    df = pandas.DataFrame(all_p_values_scaled, index=all_conditions, columns=all_conditions)
+
+    print('Result of the Rosenbaum tests:')
+    print(df.to_markdown())
 
     return 0
 
