@@ -10,6 +10,7 @@ import matplotlib.transforms as transforms
 from matplotlib.gridspec import GridSpec
 from mpl_toolkits.axes_grid1 import Divider, Size
 from matplotlib.ticker import FormatStrFormatter
+from matplotlib.colors import LinearSegmentedColormap
 
 from pathlib import Path  # v 1.0.1
 
@@ -23,7 +24,7 @@ from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
 from sklearn.neighbors import NeighborhoodComponentsAnalysis
 import umap  # umap-learn v 0.5.6
 
-from Rosenbaum_networkx import *
+from rosenbaum import rosenbaum
 from scipy.stats import gaussian_kde
 
 import Read_files, Generate_files
@@ -873,7 +874,7 @@ def Fig3_4_CellSnapshots_V2(movie_path, condition):
     return 0
 
 
-def AuxilliaryFct_create_boxplot(data, x_labels, y_label='', colmap=None, population_comp=True):
+def AuxilliaryFct_create_boxplot(data, x_labels, y_label='', colmap=None, population_comp=True, rot=0):
     """
     IDEA: function takes features/ properties of cells of different conditions as iinput,
     plots boxplot and returns figure object
@@ -1068,9 +1069,9 @@ def Fig3_4_CellSize_boxplot(movie_path, summary_stat='mean', imaging_condition='
     else:
         print('The only accepted input for "imaging_condition" are "in_vivo" or "Explant", but not ', imaging_condition)
         conditions = ['Ctrl', 'MCSF', 'TGFbeta', 'LPS', 'IFN10', 'YM201636']
-            colors = ['lightskyblue', 'darkgreen', 'yellowgreen', 'sandybrown', 'saddlebrown', 'm']
-            x_labels = ['Ctrl', 'M-CSF', r'TGF-$\beta$', 'LPS', r'IFN-$\gamma$', 'YM']
-            colmap = mcol.LinearSegmentedColormap.from_list('my_map', colors, N=len(colors))
+        colors = ['lightskyblue', 'darkgreen', 'yellowgreen', 'sandybrown', 'saddlebrown', 'm']
+        x_labels = ['Ctrl', 'M-CSF', r'TGF-$\beta$', 'LPS', r'IFN-$\gamma$', 'YM']
+        colmap = mcol.LinearSegmentedColormap.from_list('my_map', colors, N=len(colors))
         print('Here, "in_vivo" is now used.')
 
     if summary_stat not in ['mean', 'std', 'trend', 'dyn']:
@@ -2363,7 +2364,7 @@ def AuxiliaryFct_read_features_V2(parent_path, conditions, use_identical=False):
     return df, features
 
 
-def AuxiliaryFct_perform_dim_red(orig_dataf, trans_dataf, labels, method='PCA', ndim=2):
+def AuxiliaryFct_perform_dim_red(orig_dataf, trans_dataf, labels, features, method='PCA', ndim=2):
     """
     :param orig_dataf: pandas data frame, original data as extracted by fct AuxiliaryFct_read_features
     :param trans_dataf: pandas data frame, data normalized to be used in dimensionality reduction algorithms
@@ -2549,11 +2550,11 @@ def Fig3_4_DimensReduction(movie_path, imaging_condition='in_vivo', method='PCA'
         condi_string += condi
 
     # PLOT:
-    figsize = (2.3, 1.5)  # for in vivo (Fig 3)
-    figsize = (2.2, 1.6)  # for Explant (Fig 4)
+    figsize = (2.2, 1.6)
     label_fontsize = 8
     plt.rcParams["font.family"] = "Arial"
     fig = plt.figure(figsize=figsize)
+    fig2 = plt.figure(figsize=figsize)
     if ndim == 3:
         ax = fig.add_subplot(projection='3d')
         ax.set_xlabel(ax_name + str(1), fontsize=label_fontsize, labelpad=0.2)
@@ -2611,7 +2612,7 @@ def Fig3_4_DimensReduction(movie_path, imaging_condition='in_vivo', method='PCA'
                 for target, color, label, alpha in zip(use_condition, use_colors, use_legends, use_alpha):
                     indicesToKeep = np.array((rtm_df['Label'] == target))
                     ax.scatter(fit_res[indicesToKeep, 0], fit_res[indicesToKeep, 1], c=color, s=15, label=label,
-                               alpha=0.75, edgecolors='none)
+                               alpha=0.75, edgecolors='none')
 
                     custom_cmap = LinearSegmentedColormap.from_list('map_name', ['white', color])
                     x = fit_res[indicesToKeep, 0]
@@ -2660,7 +2661,7 @@ def Fig3_4_DimensReduction(movie_path, imaging_condition='in_vivo', method='PCA'
             for target, color, label, alpha in zip(use_condition, use_colors, use_legends, use_alpha):
                 indicesToKeep = np.array((rtm_df['Label'] == target))
                 ax.scatter(fit_res[indicesToKeep, 0], fit_res[indicesToKeep, 1], c=color, s=15, label=label,
-                           alpha=0.75, edgecolors='none)
+                           alpha=0.75, edgecolors='none')
                 custom_cmap = LinearSegmentedColormap.from_list('map_name', ['white', color])
                 x = fit_res[indicesToKeep, 0]
                 y = fit_res[indicesToKeep, 1]
@@ -2765,7 +2766,7 @@ def perform_Rosenbaum_tests(movie_path):
             p_val, zscore, rel_supp = rosenbaum(data_scaled, group_by='Label', test_group=cond, reference=ctrl_cond, metric='seuclidean', rank=False)
             all_p_values_scaled[ctrl_index, index] = p_val
 
-    df = pandas.DataFrame(all_p_values_scaled, index=all_conditions, columns=all_conditions)
+    df = pd.DataFrame(all_p_values_scaled, index=all_conditions, columns=all_conditions)
 
     print('Result of the Rosenbaum tests:')
     print(df.to_markdown())

@@ -12,6 +12,7 @@ if __name__ == '__main__':
     # MOVIE_PATH
     # TODO: insert the correct path here to run the script!!
     DIRECTORY_PATH = Path.home() / 'your' / 'path' / 'MacrophageData_V2'
+    DIRECTORY_PATH = Path.home() / 'Docs' / 'RTM_Data' / 'MacrophageData_New'
     MOVIE_PATH = DIRECTORY_PATH / my_condition / 'TifData' / 'Ctrl_2021-04-29_1.tif'
 
     # 1. PROCESS AND ANALYSE TIF DATA AND GENERATE ALL NECESSARY (INTERMEDIATE) FILES FOR ALL MOVIES

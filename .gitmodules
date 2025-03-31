@@ -1,0 +1,4 @@
+[submodule "rosenbaum"]
+	path = rosenbaum
+	url = https://github.com/bionetslab/scXMatch_paper/
+	branch = networkx
