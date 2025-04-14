@@ -196,21 +196,23 @@ def read_cell_size_properties(path):
     fixed_area = cell_size_properties[:, 0, 1].astype(int)
     mobile_area = area - fixed_area[:, None]
     perimeter = cell_size_properties[:, :, 2]
-    pixel_area = cell_size_properties[:, :, 3]
-    intensity_area = cell_size_properties[:, :, 4]
 
-    return area, fixed_area, mobile_area, perimeter, pixel_area, intensity_area
+    return area, fixed_area, mobile_area, perimeter
 
 
-def read_cell_shape_properties(path):
+def read_cell_shape_properties(path, v=2):
     """
     :param path: Pathlib path to .tif movie file
+    :param v: version of code, corresponding to version of submitted manuscript to PLOS CompBio
     :return solidities: shape [amount_of_cells, t]
     :return convexities: shape [amount_of_cells, t]
     :return eccentricities: shape [amount_of_cells, t]
     :return major axis: in [µm], shape [amount_of_cells, t]
     :return minor axis: in [µm], shape [amount_of_cells, t]
     :return circularity: shape [amount_of_cells, t] (form factor/ roundness)
+    :return protrusiveness: shape [amount_of_cells, t]
+    :return angularity [amount_of_cells, t]
+    :return length of longest protrusion [amount_of_cells, t]
     Info: if the CellShapeProperties file does not exist, the function to generate it is called
     """
 
@@ -226,5 +228,31 @@ def read_cell_shape_properties(path):
     major_axis = cell_shape_properties[:, :, 3]
     minor_axis = cell_shape_properties[:, :, 4]
     circularity = cell_shape_properties[:, :, 5]
+    if v == 1:
+        return solidities, convexities, eccentricities, major_axis, minor_axis, circularity
+    elif v == 2:
+        if cell_shape_properties.shape[2] == 6:
+            Generate_files.store_cell_properties(path)
+        protrusiveness = cell_shape_properties[:, :, 6]
+        angularity = cell_shape_properties[:, :, 7]
+        max_protrusion_length = cell_shape_properties[:, :, 8]
+        return solidities, convexities, eccentricities, major_axis, minor_axis, circularity, protrusiveness, angularity, max_protrusion_length
 
-    return solidities, convexities, eccentricities, major_axis, minor_axis, circularity
+
+
+def read_dynamic_area_change(path):
+    """
+    :param path:
+    :return: area change [cell, amount_of_timesteps], time_steps [amount_of_timesteps]
+    """
+
+    data_path = path.parent.parent / 'NpyData'
+    prop_path = data_path / re.sub(path.name[-4:], '_DynamicAreaChange.npy', path.name)
+    if not prop_path.is_file():
+        Generate_files.store_cell_properties(path)
+
+    data = np.load(prop_path)
+    dynamic_area_change = data[:-1, :]
+    time_steps = data[-1, :]
+
+    return dynamic_area_change, time_steps
