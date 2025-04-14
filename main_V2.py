@@ -32,13 +32,13 @@ if __name__ == '__main__':
 
     # 2. GENERATE PLOTS SHOWING ANALYSED DATA OF MACROPHAGES
     # FIGURE 2 plots
-    GeneratePlotsForPaper.Fig2_CellSnapshots(MOVIE_PATH, v=2)  
-    GeneratePlotsForPaper.Fig2_CellSize_Plot(MOVIE_PATH, v=2)  
-    GeneratePlotsForPaper.Fig2_CellShape_Plot(MOVIE_PATH, v=2)  
+    GeneratePlotsForPaper.Fig2_CellSnapshots(MOVIE_PATH, v=2)
+    GeneratePlotsForPaper.Fig2_CellSize_Plot(MOVIE_PATH, v=2)
+    GeneratePlotsForPaper.Fig2_CellShape_Plot(MOVIE_PATH, v=2)
 
     # FIGURE 3 and 4 plots
     for condition in AVAILABLE_CONDITIONS:
-        GeneratePlotsForPaper.Fig3_4_CellSnapshots_V2(MOVIE_PATH, condition)  
+        GeneratePlotsForPaper.Fig3_4_CellSnapshots_V2(MOVIE_PATH, condition)
 
     for imaging_condition in ['in_vivo', 'Old', 'Explant']:
         for stat in ['mean', 'std', 'trend']:
@@ -62,7 +62,7 @@ if __name__ == '__main__':
     GeneratePlotsForPaper.Fig5_LabellingSnapshots(MOVIE_PATH, v=2)
 
     # SUPPLEMENTARY DATA (plots or movies)
-    GeneratePlotsForPaper.Supp_Fig1_image_intensity(MOVIE_PATH)
+    GeneratePlotsForPaper.Supp_Fig1_image_intensity(MOVIE_PATH, v=2)
 
     GeneratePlotsForPaper.Supp_Movie_3(MOVIE_PATH, v=2)
     for method in ['TSNE', 'UMAP', 'LDA', 'NCA']:
