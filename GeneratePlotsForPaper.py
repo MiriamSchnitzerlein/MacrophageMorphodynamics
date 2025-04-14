@@ -30,8 +30,6 @@ from scipy.stats import gaussian_kde
 import Read_files, Generate_files
 
 
-
-
 def Fig1_CellSnapshots(movie_path, condition='BMDM'):
     """
     Create (pre-processed) Movie Snapshots for Figure 1; further processing steps are done outside of this script
