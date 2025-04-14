@@ -24,7 +24,7 @@ from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
 from sklearn.neighbors import NeighborhoodComponentsAnalysis
 import umap  # umap-learn v 0.5.6
 
-from rosenbaum import rosenbaum
+from rosenbaum.rosenbaum.rosenbaum import rosenbaum
 from scipy.stats import gaussian_kde
 
 import Read_files, Generate_files
@@ -2923,7 +2923,7 @@ def Fig5_LabellingSnapshots(movie_path, v=1):
 
 
 # c
-def Supp_Fig1_image_intensity(movie_path, v=1):
+def Supp_Fig1_image_intensity(movie_path, v=2):
     """
     :param movie_path: pathlib Path to an arbitrary .tif file, correct movie name will be chosen in the fct
     :param v: int 1 or 2, refers to 'version' of fct, corresponding to initial or re-submission of manuscript to journal
