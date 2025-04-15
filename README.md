@@ -1,4 +1,4 @@
-### Morphodynamics of resident tissue macrophages
+### Analysing morphodynamics of resident tissue macrophages
 
 This is the Python code to analyse the morphology and dynamics of resident tissue macrophages as described in the manuscript 
 'Cellular morphodynamics as quantifiers for functional states of resident tissue macrophages in vivo', submitted to and accepted for publication by PLOS Computational Biology.
