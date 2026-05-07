@@ -1,6 +1,6 @@
 from pathlib import Path  # v 1.0.1
 
-import Generate_files
+from macrophage_morphodynamics import Generate_files
 import GeneratePlotsForPaper
 
 if __name__ == '__main__':

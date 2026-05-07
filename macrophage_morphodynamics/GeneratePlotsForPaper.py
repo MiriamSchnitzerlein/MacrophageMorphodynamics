@@ -27,7 +27,7 @@ import umap  # umap-learn v 0.5.6
 from rosenbaum.rosenbaum.rosenbaum import rosenbaum
 from scipy.stats import gaussian_kde
 
-import Read_files, Generate_files
+from macrophage_morphodynamics import Read_files, Generate_files
 
 
 def Fig1_CellSnapshots(movie_path, condition='BMDM'):
@@ -2743,6 +2743,8 @@ def perform_Rosenbaum_tests(movie_path):
 
     parent_path = movie_path.parent.parent.parent  # go to 'outermost' directory ('MacrophageData')
     all_conditions = ['Ctrl', 'MCSF', 'TGFbeta', 'LPS', 'IFN10', 'YM201636', 'Old', 'OldMCSF',
+                            'Explant 1', 'Explant 2']
+    all_conditions = ['Ctrl', 'MCSF', 'TGFbeta', 'LPS', 'IFN10', 'YM201636', 'EDTA', 'Old', 'OldMCSF',
                             'Explant 1', 'Explant 2']
     feature_data, features = AuxiliaryFct_read_features_V2(parent_path, all_conditions)
     data = feature_data.drop(columns=["Movie name", "Cell Nr"])
