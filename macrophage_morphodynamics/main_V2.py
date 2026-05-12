@@ -1,6 +1,6 @@
 from pathlib import Path  # v 1.0.1
 
-import GeneratePlotsForPaper
+from macrophage_morphodynamics import GeneratePlotsForPaper
 
 if __name__ == '__main__':
 
@@ -33,7 +33,7 @@ if __name__ == '__main__':
     # FIGURE 2 plots
     # GeneratePlotsForPaper.Fig2_CellSnapshots(MOVIE_PATH, v=2)
     # GeneratePlotsForPaper.Fig2_CellSize_Plot(MOVIE_PATH, v=2)
-    # GeneratePlotsForPaper.Fig2_CellShape_Plot(MOVIE_PATH, v=2)
+    GeneratePlotsForPaper.Fig2_CellShape_Plot(MOVIE_PATH, v=2)
 
     # FIGURE 3 and 4 plots
     # for condition in AVAILABLE_CONDITIONS:

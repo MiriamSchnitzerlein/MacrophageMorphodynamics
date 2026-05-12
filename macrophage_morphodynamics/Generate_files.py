@@ -15,7 +15,7 @@ from pathlib import Path  # v 1.0.1
 import shutil
 import re
 
-import Read_files  # reading in .npy files with data (movie files, cell properties etc)
+from macrophage_morphodynamics import Read_files  # reading in .npy files with data (movie files, cell properties etc)
 
 
 def generate_color_map(n):
@@ -117,7 +117,7 @@ def store_scaling(movie_path):
                     amount_of_frames = int(mat.groups()[0])
 
     if np.isnan(length_scale):
-        raise ValueError('Resolution was not found in file InfoFor_', path.name)
+        raise ValueError('Resolution was not found in file InfoFor_', movie_path.name)
     if file_type == 1:
         time_points = np.round((time_points - time_points[0]).astype(float) / 1000)
     elif file_type == 2:

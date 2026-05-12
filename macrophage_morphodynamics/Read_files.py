@@ -4,7 +4,7 @@ import re
 import imageio  # v 2.31.1
 import cv2 as cv  # opencv-python v 4.9.0.80
 
-import Generate_files
+from macrophage_morphodynamics import Generate_files
 
 
 def read_handpicked_excel_file(path):
